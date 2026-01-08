@@ -1,0 +1,67 @@
+market-ai-app/
+ ├── index.html
+ ├── manifest.json
+ ├── sw.js
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Market Predictor</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+<div class="bg-white p-5 rounded-2xl shadow-lg w-full max-w-sm">
+  <h1 class="text-xl font-bold text-center mb-4">AI Market Predictor</h1>
+
+  <input type="file" id="img" accept="image/*" class="hidden">
+
+  <button onclick="document.getElementById('img').click()"
+    class="w-full py-2 mb-4 rounded-xl bg-gray-200 font-medium">
+    Select Image from Gallery
+  </button>
+
+  <img id="preview" class="rounded-xl mb-4 hidden"/>
+
+  <button onclick="predict()"
+    class="w-full py-2 rounded-xl bg-black text-white font-medium">
+    Predict Market
+  </button>
+
+  <div id="result" class="mt-4 text-center"></div>
+</div>
+
+<script>
+let imgInput = document.getElementById("img");
+let preview = document.getElementById("preview");
+let result = document.getElementById("result");
+
+imgInput.onchange = e => {
+  const file = e.target.files[0];
+  preview.src = URL.createObjectURL(file);
+  preview.classList.remove("hidden");
+};
+
+function predict() {
+  result.innerHTML = "Analyzing...";
+  setTimeout(() => {
+    let r = Math.random();
+    let dir = r > 0.5 ? "UP" : "DOWN";
+    let conf = dir === "UP" ? 70 + r*30 : 70 + (1-r)*30;
+
+    result.innerHTML = `
+      <div class="text-lg font-bold ${dir==="UP"?"text-green-600":"text-red-600"}">
+        Market Direction: ${dir}
+      </div>
+      <div class="text-sm text-gray-600">
+        Confidence: ${Math.floor(conf)}%
+      </div>`;
+  }, 1200);
+}
+</script>
+
+</body>
+</html>
