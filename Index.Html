@@ -1,105 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Market Predictor</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center min-h-screen">
+<body class="bg-gray-200 flex justify-center items-center min-h-screen">
 
 <div class="bg-white p-5 rounded-2xl shadow-xl w-full max-w-sm">
-  <h1 class="text-xl font-bold text-center mb-1">AI Market Predictor</h1>
-  <p class="text-xs text-center text-gray-500 mb-4">On-device Vision Analysis</p>
+  <h1 class="text-xl font-bold text-center">AI Market Predictor</h1>
+  <p class="text-xs text-center text-gray-500 mb-4">
+    Vision-based market algorithm (on-device)
+  </p>
 
   <input type="file" id="img" accept="image/*" class="hidden">
-
-  <button onclick="document.getElementById('img').click()"
-    class="w-full py-2 mb-3 rounded-xl bg-gray-200 font-medium">
+  <button onclick="img.click()" class="w-full py-2 mb-3 bg-gray-200 rounded-xl">
     Select Chart Image
   </button>
 
-  <img id="preview" class="rounded-xl mb-3 hidden border"/>
+  <img id="preview" class="hidden rounded-xl mb-3 border"/>
 
-  <button onclick="predict()"
-    class="w-full py-2 rounded-xl bg-black text-white font-medium">
+  <button onclick="analyze()" class="w-full py-2 bg-black text-white rounded-xl">
     Analyze Market
   </button>
 
-  <div id="loading" class="text-center text-sm mt-3 hidden">Analyzing chart…</div>
+  <div id="status" class="text-sm text-center mt-3 hidden">Analyzing…</div>
   <div id="result" class="mt-4 text-center"></div>
 </div>
 
 <script>
-let imgInput = document.getElementById("img");
-let preview = document.getElementById("preview");
-let loading = document.getElementById("loading");
-let result = document.getElementById("result");
-let imageData = null, w = 0, h = 0;
+const img = document.getElementById("img");
+const preview = document.getElementById("preview");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
 
-imgInput.onchange = e => {
-  const file = e.target.files[0];
-  preview.src = URL.createObjectURL(file);
+let data, W, H;
+
+img.onchange = e => {
+  preview.src = URL.createObjectURL(e.target.files[0]);
   preview.classList.remove("hidden");
   result.innerHTML = "";
 
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    w = canvas.width = img.width;
-    h = canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
-    imageData = ctx.getImageData(0, 0, w, h);
+  const image = new Image();
+  image.onload = () => {
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d");
+    W = c.width = image.width;
+    H = c.height = image.height;
+    ctx.drawImage(image, 0, 0);
+    data = ctx.getImageData(0,0,W,H).data;
   };
-  img.src = preview.src;
+  image.src = preview.src;
 };
 
-function predict() {
-  if (!imageData) return;
-  loading.classList.remove("hidden");
+function analyze() {
+  if (!data) return;
+  status.classList.remove("hidden");
   result.innerHTML = "";
 
   setTimeout(() => {
-    let top = 0, bottom = 0;
+    let upper = 0, lower = 0, left = 0, right = 0;
 
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x += 8) {
-        const i = (y * w + x) * 4;
-        const intensity =
-          imageData.data[i] +
-          imageData.data[i + 1] +
-          imageData.data[i + 2];
+    for (let y = 0; y < H; y += 4) {
+      for (let x = 0; x < W; x += 4) {
+        const i = (y * W + x) * 4;
+        const intensity = data[i] + data[i+1] + data[i+2];
 
-        if (y < h / 2) top += intensity;
-        else bottom += intensity;
+        if (y < H/2) upper += intensity;
+        else lower += intensity;
+
+        if (x < W/2) left += intensity;
+        else right += intensity;
       }
     }
 
-    // Deterministic rule:
-    // More activity (candles) in upper half → bullish
-    const direction = top < bottom ? "UP" : "DOWN";
+    // -------- MARKET LOGIC --------
+    let trendScore = 0;
+    trendScore += lower > upper ? 1 : -1;   // price position
+    trendScore += right > left ? 1 : -1;    // slope / momentum
 
-    // Confidence from difference ratio
-    const diff = Math.abs(top - bottom);
-    const conf = Math.min(95, 70 + diff / (top + bottom) * 100);
+    const direction = trendScore >= 1 ? "UP" : "DOWN";
 
-    loading.classList.add("hidden");
+    // confidence from imbalance strength
+    const imbalance =
+      Math.abs(lower-upper)/(lower+upper) +
+      Math.abs(right-left)/(right+left);
+
+    const confidence = Math.min(96, 72 + imbalance*60);
+
+    status.classList.add("hidden");
 
     result.innerHTML = `
-      <div class="text-lg font-bold ${direction === "UP" ? "text-green-600" : "text-red-600"}">
+      <div class="text-lg font-bold ${direction==="UP"?"text-green-600":"text-red-600"}">
         Market Direction: ${direction}
       </div>
       <div class="text-sm text-gray-600 mb-2">
-        Confidence: ${conf.toFixed(1)}%
+        Confidence: ${confidence.toFixed(1)}%
       </div>
-      <div class="w-full bg-gray-200 rounded-full h-2">
-        <div class="${direction === "UP" ? "bg-green-500" : "bg-red-500"} h-2 rounded-full"
-             style="width:${conf}%"></div>
+      <div class="w-full h-2 bg-gray-200 rounded-full">
+        <div class="${direction==="UP"?"bg-green-500":"bg-red-500"} h-2 rounded-full"
+             style="width:${confidence}%"></div>
       </div>
     `;
-  }, 800);
+  }, 700);
 }
 </script>
 
